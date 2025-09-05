@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+
+  tokens      Token[]
+  workspaces  WorkspaceUser[]
+  departments Department[]    @relation("UserToDepartments")
+  offices     Office[]        @relation("UserToOffices")
+  jobLevels   JobLevel[]      @relation("UserToJobLevels")
+  jobTitles   JobTitle[]      @relation("UserToJobTitles")
+  employees   Employee[]
+
+  deviceAttendances DeviceAttendance[]
+  logAttendances    LogAttendance[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users       WorkspaceUser[]
+  departments Department[]    @relation("WorkspaceToDepartments")
+  offices     Office[]        @relation("WorkspaceToOffices")
+  jobLevels   JobLevel[]      @relation("WorkspaceToJobLevels")
+  jobTitles   JobTitle[]      @relation("WorkspaceToJobTitles")
+  employees   Employee[]
+}
+
+model WorkspaceUser {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+
+  role      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, workspaceId])
+}
+
+model Token {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  type      String   @default("access")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Department {
+  id   String @id @default(cuid())
+  name String
+
+  workspace   Workspace @relation("WorkspaceToDepartments", fields: [workspaceId], references: [id])
+  workspaceId String
+
+  user   User   @relation("UserToDepartments", fields: [userId], references: [id])
+  userId String
+
+  createdAt DateTime   @default(now())
+  employees Employee[]
+}
+
+model Office {
+  id       String  @id @default(cuid())
+  name     String
+  location String?
+
+  workspace   Workspace @relation("WorkspaceToOffices", fields: [workspaceId], references: [id])
+  workspaceId String
+
+  user   User   @relation("UserToOffices", fields: [userId], references: [id])
+  userId String
+
+  createdAt DateTime   @default(now())
+  employees Employee[]
+}
+
+model JobLevel {
+  id   String @id @default(cuid())
+  name String
+
+  workspace   Workspace @relation("WorkspaceToJobLevels", fields: [workspaceId], references: [id])
+  workspaceId String
+
+  user   User   @relation("UserToJobLevels", fields: [userId], references: [id])
+  userId String
+
+  titles    JobTitle[] @relation("LevelToTitle")
+  employees Employee[]
+}
+
+model JobTitle {
+  id   String @id @default(cuid())
+  name String
+
+  level   JobLevel? @relation("LevelToTitle", fields: [levelId], references: [id])
+  levelId String?
+
+  workspace   Workspace @relation("WorkspaceToJobTitles", fields: [workspaceId], references: [id])
+  workspaceId String
+
+  user   User   @relation("UserToJobTitles", fields: [userId], references: [id])
+  userId String
+
+  employees Employee[]
+}
+
+model Employee {
+  id    String  @id @default(cuid())
+  name  String
+  email String  @unique
+  phone String?
+  photo String? // Encrypted base64 string or file path
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+
+  office   Office @relation(fields: [officeId], references: [id])
+  officeId String
+
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
+
+  jobTitle   JobTitle @relation(fields: [jobTitleId], references: [id])
+  jobTitleId String
+
+  jobLevel   JobLevel @relation(fields: [jobLevelId], references: [id])
+  jobLevelId String
+
+  createdAt DateTime @default(now())
+}
+
+model DeviceAttendance {
+  id             String  @id @default(uuid())
+  deviceId       String
+  deviceUsername String?
+  devicePassword String?
+
+  userId    String
+  createdAt DateTime?
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  user User            @relation(fields: [userId], references: [id])
+  logs LogAttendance[]
+}
+
+model LogAttendance {
+  id                 Int    @id @default(autoincrement())
+  deviceAttendanceId String
+  deviceId           String
+  deviceTypeId       Int
+  userId             String
+  ioMode             String
+
+  attDatetime DateTime?
+  createdAt   DateTime?
+  editedAt    DateTime?
+  deletedAt   DateTime?
+
+  user             User             @relation(fields: [userId], references: [id])
+  deviceAttendance DeviceAttendance @relation(fields: [deviceAttendanceId], references: [id])
+}
