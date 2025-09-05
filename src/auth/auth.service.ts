@@ -15,27 +15,31 @@ export class AuthService {
         return { message: 'Register success', user };
     }
 
-    async login(email: string, password: string) {
-        const user = await this.userService.findByEmail(email);
-        if (!user) throw new UnauthorizedException('User not found');
+    async login(identifier: string, password: string) {
+        const user = await this.userService.findByEmailOrPhone(identifier);
+
+        if (!user) {
+            throw new UnauthorizedException('User tidak ditemukan');
+        }
 
         const match = await bcrypt.compare(password, user.password);
-        if (!match) throw new UnauthorizedException('Wrong password');
+        if (!match) {
+            throw new UnauthorizedException('Password salah');
+        }
 
         const payload = { sub: user.id };
-        const token = this.jwtService.sign(payload, {
-            expiresIn: '1d',
-        });
+        const token = this.jwtService.sign(payload, { expiresIn: '1d' });
 
-        // Simpan token ke tabel Token
         await prisma.token.create({
             data: {
                 token,
                 userId: user.id,
-                expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 1 hari
+                expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
             },
         });
+        const { password: _, ...userWithoutPassword } = user;
+        return { accessToken: token, user: userWithoutPassword };
 
-        return { accessToken: token, user };
     }
+
 }
