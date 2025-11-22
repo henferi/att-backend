@@ -11,11 +11,26 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter()
+    new FastifyAdapter(),
   );
 
-  // ✅ DAFTARKAN PLUGIN DI SINI SEBELUM LISTEN
-  await app.register(helmet);
+  // 🔐 Helmet dengan CSP yang tetap aman tapi mengizinkan inline script & style
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        // Semua resource default dari origin yang sama
+        defaultSrc: ["'self'"],
+        // Izinkan script dari origin sendiri + inline <script> (buat halaman status)
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        // Izinkan style dari origin sendiri + inline <style>
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        // Izinkan gambar dari origin sendiri & data URL (kalau nanti ada icon base64)
+        imgSrc: ["'self'", 'data:'],
+        // fetch / XHR hanya boleh ke origin sendiri (contoh: /metrics)
+        connectSrc: ["'self'"],
+      },
+    },
+  });
 
   await app.register(rateLimit, {
     max: 1000,
@@ -30,7 +45,6 @@ async function bootstrap() {
     }),
   );
 
-  // ✅ SETELAH PLUGIN SELESAI BARU LISTEN
   await app.listen(3000, '0.0.0.0');
 }
 bootstrap();
