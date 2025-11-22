@@ -41,4 +41,13 @@ export class UserService {
             },
         });
     }
+    
+    async findByEmail(email: string) {
+        return prisma.user.findFirst({
+            where: {
+                email: email 
+            },
+        });
+    }
+    
 }
